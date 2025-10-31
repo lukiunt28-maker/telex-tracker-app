@@ -1,144 +1,56 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Sistem Pelacakan Telex</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f8f9fa; }
-        .container { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-        h1 { color: #007bff; border-bottom: 3px solid #007bff; padding-bottom: 10px; text-align: center; }
-        h2 { color: #343a40; margin-top: 30px; }
-        form.add-form { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background: #e9ecef; display: flex; align-items: center; }
-        input[type="text"] { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px; }
-        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-        button[type="submit"] { background-color: #007bff; }
-        button.selesai-btn { background-color: #28a745; }
-        button.hapus-btn { background-color: #dc3545; }
-        .remark-btn { background-color: #ff8c00; padding: 5px 8px; font-size: 0.8em; margin-top: 5px;}
-        .download-btn { background-color: #00994d; color: white; padding: 10px 15px; border-radius: 4px; text-decoration: none; font-weight: bold;}
-        .download-btn:hover { background-color: #008040; }
+<tbody>
+            {% for telex in semua_telex %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ telex.nomor_telex }}</td>
+                <td>
+                    <span class="badge 
+                        {% if telex.status == 'SUDAH DIKERJAKAN' %}bg-success
+                        {% else %}bg-warning{% endif %}">
+                        {{ telex.status }}
+                    </span>
+                </td>
+                
+                <td>
+                    {% if telex.dikerjakan_oleh_widebody %}
+                        {{ telex.dikerjakan_oleh_widebody }}
+                    {% else %}
+                        <form action="{{ url_for('selesaikan_bagian', telex_id=telex.id, tipe='widebody') }}" method="POST" class="d-inline">
+                            <input type="text" name="nama_pekerja" placeholder="Nama Widebody" class="form-control form-control-sm mb-1" required>
+                            <button type="submit" class="btn btn-sm btn-success">Selesai WB</button>
+                        </form>
+                    {% endif %}
+                </td>
 
-        /* Ringkasan */
-        .summary { display: flex; justify-content: space-around; margin-bottom: 25px; padding: 15px; background-color: #f1f1f1; border-radius: 5px; }
-        .summary-item { text-align: center; padding: 10px; border-radius: 5px; width: 45%; }
-        .summary-belum { background-color: #ffecb5; color: #664d03; }
-        .summary-sudah { background-color: #d1e7dd; color: #0f5132; }
+                <td>
+                    {% if telex.dikerjakan_oleh_narrowbody %}
+                        {{ telex.dikerjakan_oleh_narrowbody }}
+                    {% else %}
+                        <form action="{{ url_for('selesaikan_bagian', telex_id=telex.id, tipe='narrowbody') }}" method="POST" class="d-inline">
+                            <input type="text" name="nama_pekerja" placeholder="Nama Narrowbody" class="form-control form-control-sm mb-1" required>
+                            <button type="submit" class="btn btn-sm btn-info text-white">Selesai NB</button>
+                        </form>
+                    {% endif %}
+                </td>
 
-        /* Tabel */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; table-layout: fixed; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-        th { background-color: #007bff; color: white; }
-        .status-badge { padding: 4px 8px; border-radius: 15px; font-weight: bold; font-size: 0.8em; white-space: nowrap; }
-        .status-belum { background-color: #ffc107; color: #343a40; }
-        .status-sudah { background-color: #28a745; color: white; }
-        
-        /* Pengaturan Lebar Kolom */
-        table th:nth-child(1), table td:nth-child(1) { width: 3%; } /* No. */
-        table th:nth-child(3), table td:nth-child(3) { width: 8%; } /* Status */
-        table th:nth-child(4), table td:nth-child(4) { width: 7%; } /* Widebody */
-        table th:nth-child(5), table td:nth-child(5) { width: 7%; } /* Narrowbody */
-        table th:nth-child(6), table td:nth-child(6) { width: 12%; } /* Remark */
-        table th:nth-child(7), table td:nth-child(7) { width: 10%; } /* Waktu Selesai */
-        table th:nth-child(8), table td:nth-child(8) { width: 25%; } /* Aksi */
+                <td>
+                    <form action="{{ url_for('tambah_remark', telex_id=telex.id) }}" method="POST" class="d-inline">
+                        <input type="text" name="remark_input" placeholder="Tambah Remark" class="form-control form-control-sm mb-1" value="{{ telex.remark_telex or '' }}">
+                        <button type="submit" class="btn btn-sm btn-secondary">Set Remark</button>
+                    </form>
+                </td>
 
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Sistem Pelacakan Telex</h1>
+                <td>
+                    {{ telex.tanggal_diselesaikan.strftime('%d/%m %H:%M') if telex.tanggal_diselesaikan else '-' }}
+                </td>
 
-        <div style="text-align: right; margin-bottom: 20px;">
-            <a href="{{ url_for('ekspor_csv') }}" class="download-btn">⬇️ Download Data (CSV)</a>
-        </div>
-
-        <div class="summary">
-            <div class="summary-item summary-belum">
-                <span style="font-size: 1.8em;">{{ jumlah_belum }}</span><br>
-                <strong>BELUM DIKERJAKAN</strong>
-            </div>
-            <div class="summary-item summary-sudah">
-                <span style="font-size: 1.8em;">{{ jumlah_sudah }}</span><br>
-                <strong>SUDAH DIKERJAKAN</strong>
-            </div>
-        </div>
-
-        <h2>1. Tambah Telex Baru</h2>
-        <form action="{{ url_for('tambah_telex') }}" method="POST" class="add-form">
-            <input type="text" name="nomor_telex" required placeholder="Masukkan Nomor Telex Baru">
-            <button type="submit">Tambah ke Daftar</button>
-        </form>
-
-        <h2>2. Daftar & Status Telex</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>No.</th>
-                    <th>Nomor Telex</th>
-                    <th>Status</th>
-                    <th>Widebody</th>
-                    <th>Narrowbody</th>
-                    <th>Remark</th>
-                    <th>Waktu Selesai</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for telex in semua_telex %}
-                <tr>
-                    <td>{{ loop.index }}</td>
-                    <td><pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">{{ telex.nomor_telex }}</pre></td>
-                    <td>
-                        <span class="status-badge status-{{ 'sudah' if telex.status == 'SUDAH DIKERJAKAN' else 'belum' }}">
-                            {{ telex.status }}
-                        </span>
-                    </td>
-                    <td>{{ telex.dikerjakan_oleh_widebody or '-' }}</td> 
-                    <td>{{ telex.dikerjakan_oleh_narrowbody or '-' }}</td>
-                    
-                    <td>{{ telex.remark_telex or '-' }}</td> 
-                    
-                    <td>{{ telex.tanggal_diselesaikan.strftime('%Y-%m-%d %H:%M') if telex.tanggal_diselesaikan else '-' }}</td>
-                    <td>
-                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                            
-                            <form action="{{ url_for('tambah_remark', telex_id=telex.id) }}" method="POST" style="display:flex; align-items: center; gap: 5px; margin-bottom: 5px;">
-                                <input type="text" name="remark_input" placeholder="Remark" value="{{ telex.remark_telex or '' }}" style="width: 80px; margin: 0; padding: 5px; font-size: 0.8em;">
-                                <button type="submit" class="remark-btn" style="padding: 5px 8px; font-size: 0.8em;">Simpan</button>
-                            </form>
-
-                            {% if telex.status == 'BELUM DIKERJAKAN' or not (telex.dikerjakan_oleh_widebody and telex.dikerjakan_oleh_narrowbody) %}
-                                
-                                {% if not telex.dikerjakan_oleh_widebody %}
-                                <form action="{{ url_for('selesaikan_telex', telex_id=telex.id) }}" method="POST" style="display:flex; align-items: center; gap: 5px;">
-                                    <input type="text" name="nama_pekerja" placeholder="WB Nama" required style="width: 60px; margin: 0; padding: 5px; font-size: 0.8em;">
-                                    <input type="hidden" name="tipe_pesawat" value="widebody">
-                                    <button type="submit" class="selesai-btn" style="padding: 5px 8px; font-size: 0.8em;">Selesai WB</button>
-                                </form>
-                                {% endif %}
-
-                                {% if not telex.dikerjakan_oleh_narrowbody %}
-                                <form action="{{ url_for('selesaikan_telex', telex_id=telex.id) }}" method="POST" style="display:flex; align-items: center; gap: 5px;">
-                                    <input type="text" name="nama_pekerja" placeholder="NB Nama" required style="width: 60px; margin: 0; padding: 5px; font-size: 0.8em;">
-                                    <input type="hidden" name="tipe_pesawat" value="narrowbody">
-                                    <button type="submit" class="selesai-btn" style="padding: 5px 8px; font-size: 0.8em; background-color: #0056b3;">Selesai NB</button>
-                                </form>
-                                {% endif %}
-                                
-                            {% endif %}
-
-                            <form action="{{ url_for('hapus_telex', telex_id=telex.id) }}" method="POST" style="display:inline; margin-top: 5px;">
-                                <button type="submit" class="hapus-btn" style="padding: 5px 15px; font-size: 0.8em;" onclick="return confirm('Yakin ingin menghapus telex ini?');">Hapus</button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="8" style="text-align: center;">Belum ada data telex yang dimasukkan.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-    </div>
-</body>
-</html>
+                <td>
+                    <form action="{{ url_for('hapus_telex', telex_id=telex.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus?');">Hapus</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
